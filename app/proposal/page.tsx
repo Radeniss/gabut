@@ -9,6 +9,7 @@ export default function Proposal() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [noButtonPosition, setNoButtonPosition] = useState({ x: 0, y: 0 });
+  const [isNoButtonMoved, setIsNoButtonMoved] = useState(false); // New state
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 });
   const router = useRouter();
@@ -21,7 +22,6 @@ export default function Proposal() {
     }
     setName(storedName);
 
-    // Set window dimensions for confetti
     const updateWindowDimensions = () => {
       setWindowDimensions({
         width: window.innerWidth,
@@ -29,35 +29,40 @@ export default function Proposal() {
       });
     };
 
+    const updateContainerDimensions = () => {
+      const container = document.getElementById('button-container');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        setContainerDimensions({
+          width: rect.width,
+          height: rect.height
+        });
+      }
+    };
+
     updateWindowDimensions();
+    updateContainerDimensions();
+
     window.addEventListener('resize', updateWindowDimensions);
+    window.addEventListener('resize', updateContainerDimensions);
 
-    // Set container dimensions for button positioning
-    const container = document.getElementById('button-container');
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      setContainerDimensions({
-        width: rect.width,
-        height: rect.height
-      });
-    }
-
-    return () => window.removeEventListener('resize', updateWindowDimensions);
+    return () => {
+      window.removeEventListener('resize', updateWindowDimensions);
+      window.removeEventListener('resize', updateContainerDimensions);
+    };
   }, [router]);
 
   const handleYesClick = () => {
     setShowConfetti(true);
     setShowMessage(true);
-    
-    // Stop confetti after 5 seconds
     setTimeout(() => {
       setShowConfetti(false);
     }, 5000);
   };
 
   const moveNoButton = () => {
-    const buttonWidth = 120; // Approximate button width
-    const buttonHeight = 48; // Approximate button height
+    const buttonWidth = 120; // Approx. button width
+    const buttonHeight = 48; // Approx. button height
     const margin = 20;
 
     const maxX = containerDimensions.width - buttonWidth - margin;
@@ -69,12 +74,16 @@ export default function Proposal() {
     setNoButtonPosition({ x: newX, y: newY });
   };
 
-  const handleNoHover = () => {
-    moveNoButton();
-  };
-
+  // New handler for click events
   const handleNoClick = () => {
-    moveNoButton();
+    if (isNoButtonMoved) {
+      // If already moved, reset its position
+      setIsNoButtonMoved(false);
+    } else {
+      // If not moved, move it and set the state
+      moveNoButton();
+      setIsNoButtonMoved(true);
+    }
   };
 
   const handleBackToHome = () => {
@@ -125,31 +134,32 @@ export default function Proposal() {
           </h2>
         </div>
 
-        <div 
-          id="button-container"
-          className="relative h-64 w-full max-w-md mx-auto flex items-center justify-center"
+        <div
+        id="button-container"
+        className="relative h-64 w-full max-w-md mx-auto flex items-center justify-center gap-4"
         >
-          <button
-            onClick={handleYesClick}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-xl mr-4 z-10"
-          >
-            Iya Dong! 💕
-          </button>
+        <button
+          onClick={handleYesClick}
+          className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-xl z-10"
+        >
+          Iya Dong! 💕
+        </button>
 
-          <button
-            onClick={handleNoClick}
-            onMouseEnter={handleNoHover}
-            className={`${noButtonPosition.x === 0 && noButtonPosition.y === 0 ? 'relative' : 'absolute'} bg-gradient-to-r from-gray-400 to-gray-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg transition-all duration-300 text-lg hover:shadow-xl`}
-            style={{
-              ...(noButtonPosition.x !== 0 || noButtonPosition.y !== 0 ? {
-                left: `${noButtonPosition.x}px`,
-                top: `${noButtonPosition.y}px`,
-                transform: 'translate(-50%, -50%)'
-              } : {})
-            }}
-          >
-            Tidak 😔
-          </button>
+        <button
+          onClick={handleNoClick} // Updated onClick handler
+          onMouseEnter={() => { if (!isNoButtonMoved) moveNoButton() }} // Updated onMouseEnter
+          className="bg-gradient-to-r from-gray-400 to-gray-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg text-lg hover:shadow-xl"
+          style={isNoButtonMoved ? {
+              position: 'absolute',
+              left: noButtonPosition.x,
+              top: noButtonPosition.y,
+              transition: 'left 0.4s ease, top 0.4s ease',
+          } : {
+              transition: 'all 0.4s ease',
+          }}
+        >
+          Tidak 😔
+        </button>
         </div>
 
         {showMessage && (
@@ -162,7 +172,7 @@ export default function Proposal() {
               </div>
             </div>
             <p className="text-2xl font-bold text-pink-600 mb-2">
-              Yeay! You've made me the happiest person in the world! 🎉
+              Yeay! You&#39;ve made me the happiest person in the world! 🎉
             </p>
             <p className="text-lg text-gray-600">
               Aku udah ga sabar menjalani hari-hari indah bersamamu! 💖✨
@@ -172,12 +182,11 @@ export default function Proposal() {
 
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
-            Coba deh hover ke tombol "Tidak"... 😏
+            Coba deh hover ke tombol &quot;Tidak&quot;... 😏
           </p>
         </div>
       </div>
 
-      {/* Floating hearts animation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(6)].map((_, i) => (
           <Heart
